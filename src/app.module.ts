@@ -5,9 +5,10 @@ import { SharedModule } from './modules/shared/shared.module.js';
 import { AtsModule } from './modules/ats/ats.module.js';
 import { HrmsModule } from './modules/hrms/hrms.module.js';
 import { CrmModule } from './modules/crm/crm.module.js';
+import { JobsModule } from './jobs/jobs.module.js';
 
 @Module({
-  imports: [SharedModule, AtsModule, HrmsModule, CrmModule],
+  imports: [SharedModule, AtsModule, HrmsModule, CrmModule, JobsModule],
   controllers: [AppController],
   providers: [AppService],
 })
