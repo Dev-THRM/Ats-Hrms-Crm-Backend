@@ -1,15 +1,121 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+enum AppPlan {
+  ATS
+  HRMS
+  CRM
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  TRIALING
+  PAST_DUE
+  CANCELED
+  INCOMPLETE
+  UNPAID
+}
+
+enum BillingCycle {
+  MONTHLY
+  ANNUAL
+}
+
+enum SystemRoleType {
+  SUPER_ADMIN
+  ADMIN
+  MANAGER
+  RECRUITER
+  EMPLOYEE
+  CUSTOM
+}
+
+model Organization {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  logoUrl   String?
+  website   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users         User[]
+  roles         Role[]
+  subscriptions Subscription[]
+
+  @@index([slug])
+}
+
+model Role {
+  id             String         @id @default(uuid())
+  organizationId String
+  name           String
+  description    String?
+  type           SystemRoleType @default(CUSTOM)
+  permissions    String[]       @default([])
+  isSystem       Boolean        @default(false)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  users        User[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+}
+
+model User {
+  id               String    @id @default(uuid())
+  organizationId   String
+  roleId           String
+  email            String
+  passwordHash     String
+  firstName        String
+  lastName         String
+  phone            String?
+  avatarUrl        String?
+  isActive         Boolean   @default(true)
+  refreshTokenHash String?
+  lastLoginAt      DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  role         Role         @relation(fields: [roleId], references: [id], onDelete: Restrict)
+
+  @@unique([email, organizationId])
+  @@index([organizationId])
+  @@index([roleId])
+  @@index([email])
+}
+
+model Subscription {
+  id                   String             @id @default(uuid())
+  organizationId       String
+  activePlans          AppPlan[]          @default([])
+  status               SubscriptionStatus @default(TRIALING)
+  billingCycle         BillingCycle       @default(MONTHLY)
+  startDate            DateTime           @default(now())
+  endDate              DateTime?
+  trialEndsAt          DateTime?
+  maxUsers             Int                @default(10)
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
+  metadata             Json?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([status])
 }
