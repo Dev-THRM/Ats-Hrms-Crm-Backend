@@ -10,7 +10,7 @@ import {
   ArrayMinSize,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { EmploymentType, JobStatus } from '@prisma/client';
+import { EmploymentType, JobStatus, ExperienceLevel } from '@prisma/client';
 
 export class CreateJobDto {
   @IsString()
@@ -68,6 +68,10 @@ export class CreateJobDto {
   @Min(0)
   @Type(() => Number)
   experienceMax?: number;
+
+  @IsEnum(ExperienceLevel)
+  @IsOptional()
+  experienceLevel?: ExperienceLevel;
 
   @IsArray()
   @IsString({ each: true })

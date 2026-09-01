@@ -1,6 +1,6 @@
 import { IsEnum, IsOptional, IsString, IsInt, Min, Max } from 'class-validator';
 import { Type } from 'class-transformer';
-import { EmploymentType, JobStatus } from '@prisma/client';
+import { EmploymentType, JobStatus, ExperienceLevel } from '@prisma/client';
 
 export class QueryJobsDto {
   @IsOptional()
@@ -14,6 +14,10 @@ export class QueryJobsDto {
   @IsOptional()
   @IsEnum(EmploymentType)
   employmentType?: EmploymentType;
+
+  @IsOptional()
+  @IsEnum(ExperienceLevel)
+  experienceLevel?: ExperienceLevel;
 
   @IsOptional()
   @IsString()

@@ -83,6 +83,7 @@ export class JobsService {
       status,
       department,
       employmentType,
+      experienceLevel,
       search,
       page = 1,
       limit = 10,
@@ -97,6 +98,7 @@ export class JobsService {
         department: { equals: department, mode: 'insensitive' },
       }),
       ...(employmentType && { employmentType }),
+      ...(experienceLevel && { experienceLevel }),
       ...(search && {
         OR: [
           { title: { contains: search, mode: 'insensitive' } },
