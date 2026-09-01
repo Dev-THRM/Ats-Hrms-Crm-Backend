@@ -7,7 +7,6 @@ import { AuthModule } from './modules/auth/auth.module.js';
 import { AtsModule } from './modules/ats/ats.module.js';
 import { HrmsModule } from './modules/hrms/hrms.module.js';
 import { CrmModule } from './modules/crm/crm.module.js';
-import { JobsModule } from './jobs/jobs.module.js';
 
 @Module({
   imports: [
@@ -17,7 +16,6 @@ import { JobsModule } from './jobs/jobs.module.js';
     AtsModule,
     HrmsModule,
     CrmModule,
-    JobsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
