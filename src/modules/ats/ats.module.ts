@@ -8,6 +8,8 @@ import { CandidatesController } from './candidates/candidates.controller.js';
 import { CandidatesService } from './candidates/candidates.service.js';
 import { ApplicationsController } from './applications/applications.controller.js';
 import { ApplicationsService } from './applications/applications.service.js';
+import { ResumesController } from './resumes/resumes.controller.js';
+import { ResumesService } from './resumes/resumes.service.js';
 
 @Module({
   imports: [SharedModule],
@@ -16,18 +18,21 @@ import { ApplicationsService } from './applications/applications.service.js';
     JobsController,
     CandidatesController,
     ApplicationsController,
+    ResumesController,
   ],
   providers: [
     JobsService,
     PipelineStagesService,
     CandidatesService,
     ApplicationsService,
+    ResumesService,
   ],
   exports: [
     JobsService,
     PipelineStagesService,
     CandidatesService,
     ApplicationsService,
+    ResumesService,
   ],
 })
 export class AtsModule {}
