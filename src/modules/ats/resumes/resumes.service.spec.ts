@@ -89,7 +89,7 @@ describe('ResumesService', () => {
       'cand-1',
     );
 
-    expect(result.message).toBe('Resume uploaded successfully');
+    expect(result.message).toContain('Resume uploaded successfully');
     expect(result.resumeUrl).toBeDefined();
     expect(prisma.candidate.update).toHaveBeenCalledWith(
       expect.objectContaining({

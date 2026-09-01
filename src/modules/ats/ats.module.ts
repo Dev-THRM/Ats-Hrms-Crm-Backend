@@ -10,6 +10,10 @@ import { ApplicationsController } from './applications/applications.controller.j
 import { ApplicationsService } from './applications/applications.service.js';
 import { ResumesController } from './resumes/resumes.controller.js';
 import { ResumesService } from './resumes/resumes.service.js';
+import { ResumeParserService } from './parser/resume-parser.service.js';
+import { AiDetectorService } from './parser/ai-detector.service.js';
+import { GeminiParserService } from './parser/gemini-parser.service.js';
+import { ResumeProcessorWorker } from './parser/resume-processor.worker.js';
 
 @Module({
   imports: [SharedModule],
@@ -26,6 +30,10 @@ import { ResumesService } from './resumes/resumes.service.js';
     CandidatesService,
     ApplicationsService,
     ResumesService,
+    ResumeParserService,
+    AiDetectorService,
+    GeminiParserService,
+    ResumeProcessorWorker,
   ],
   exports: [
     JobsService,
@@ -33,6 +41,9 @@ import { ResumesService } from './resumes/resumes.service.js';
     CandidatesService,
     ApplicationsService,
     ResumesService,
+    ResumeParserService,
+    AiDetectorService,
+    GeminiParserService,
   ],
 })
 export class AtsModule {}

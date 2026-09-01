@@ -4,12 +4,16 @@ import {
   BadRequestException,
   ConflictException,
   Inject,
+  Optional,
 } from '@nestjs/common';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 import { Prisma, ApplicationStatus, EntityPipelineType } from '@prisma/client';
 import { PrismaService } from '../../shared/prisma/prisma.service.js';
 import { CandidatesService } from '../candidates/candidates.service.js';
 import { PipelineStagesService } from '../jobs/pipeline-stages.service.js';
 import { StageTransitionService } from '../../shared/pipelines/stage-transition.service.js';
+import { RESUME_QUEUE } from '../../shared/queue/queue.module.js';
 import { CreateApplicationDto } from './dto/create-application.dto.js';
 import { QueryApplicationsDto } from './dto/query-applications.dto.js';
 
@@ -23,6 +27,7 @@ export class ApplicationsService {
     private readonly pipelineStagesService: PipelineStagesService,
     @Inject(StageTransitionService)
     private readonly stageTransitionService: StageTransitionService,
+    @Optional() @InjectQueue(RESUME_QUEUE) private readonly resumeQueue?: Queue,
   ) {}
 
   /**
@@ -54,22 +59,23 @@ export class ApplicationsService {
     }
 
     let candidateId = dto.candidateId;
+    let candidateRecord = null;
 
     if (candidateId) {
-      const candidate = await this.prisma.candidate.findFirst({
+      candidateRecord = await this.prisma.candidate.findFirst({
         where: { id: candidateId, organizationId },
       });
-      if (!candidate) {
+      if (!candidateRecord) {
         throw new NotFoundException(
           `Candidate with ID '${candidateId}' not found in your organization`,
         );
       }
     } else if (dto.candidate) {
-      const candidate = await this.candidatesService.findOrCreate(
+      candidateRecord = await this.candidatesService.findOrCreate(
         organizationId,
         dto.candidate,
       );
-      candidateId = candidate.id;
+      candidateId = candidateRecord.id;
     } else {
       throw new BadRequestException(
         'Either candidateId or candidate details must be provided',
@@ -154,6 +160,24 @@ export class ApplicationsService {
       performedById: userId,
       notes: 'Initial application submission',
     });
+
+    // If candidate has a resumeUrl/resumeKey, enqueue resume parsing job
+    const resumeKey =
+      (dto.metadata as Record<string, any>)?.resumeKey ||
+      (candidateRecord?.resumeUrl?.includes('resumes/')
+        ? candidateRecord.resumeUrl.split('storage/')[1] || candidateRecord.resumeUrl
+        : null);
+
+    if (resumeKey && this.resumeQueue) {
+      await this.resumeQueue.add('parse-resume', {
+        organizationId,
+        candidateId,
+        jobId: dto.jobId,
+        applicationId: application.id,
+        resumeKey,
+        resumeUrl: candidateRecord?.resumeUrl,
+      });
+    }
 
     return application;
   }
@@ -343,6 +367,70 @@ export class ApplicationsService {
       EntityPipelineType.APPLICATION,
       applicationId,
     );
+  }
+
+  /**
+   * Retrieves ATS score details, skill match breakdown, and AI detection report for an application.
+   */
+  async getAtsScore(organizationId: string, applicationId: string) {
+    const app = await this.findOne(organizationId, applicationId);
+    const metadata = (app.metadata as Record<string, any>) || {};
+
+    return {
+      applicationId: app.id,
+      candidate: {
+        id: app.candidate.id,
+        name: `${app.candidate.firstName} ${app.candidate.lastName}`,
+        email: app.candidate.email,
+        skills: app.candidate.skills,
+      },
+      job: {
+        id: app.job.id,
+        title: app.job.title,
+      },
+      atsScore: app.atsScore,
+      status: app.status,
+      rejectionReason: app.rejectionReason,
+      atsScoreBreakdown: metadata.atsScoreBreakdown || null,
+      aiDetection: metadata.aiDetection || null,
+      parsedResume: metadata.parsedResume || null,
+    };
+  }
+
+  /**
+   * Re-triggers async parsing, AI detection, and scoring for an application.
+   */
+  async reparseApplication(organizationId: string, applicationId: string) {
+    const app = await this.findOne(organizationId, applicationId);
+    const metadata = (app.metadata as Record<string, any>) || {};
+
+    const resumeKey =
+      metadata.resumeKey ||
+      (app.candidate.resumeUrl?.includes('resumes/')
+        ? app.candidate.resumeUrl.split('storage/')[1] || app.candidate.resumeUrl
+        : null);
+
+    if (!resumeKey) {
+      throw new BadRequestException(
+        'No resume file found for this application or candidate',
+      );
+    }
+
+    if (this.resumeQueue) {
+      await this.resumeQueue.add('parse-resume', {
+        organizationId,
+        candidateId: app.candidateId,
+        jobId: app.jobId,
+        applicationId: app.id,
+        resumeKey,
+        resumeUrl: app.candidate.resumeUrl,
+      });
+    }
+
+    return {
+      message: 'Resume parsing and AI analysis enqueued successfully',
+      applicationId: app.id,
+    };
   }
 
   /**

@@ -3,9 +3,13 @@ import {
   BadRequestException,
   NotFoundException,
   Inject,
+  Optional,
 } from '@nestjs/common';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 import { StorageService } from '../../shared/storage/storage.service.js';
 import { PrismaService } from '../../shared/prisma/prisma.service.js';
+import { RESUME_QUEUE } from '../../shared/queue/queue.module.js';
 import { GetPresignedUrlDto } from './dto/get-presigned-url.dto.js';
 import { AttachResumeDto } from './dto/attach-resume.dto.js';
 import * as path from 'node:path';
@@ -32,6 +36,7 @@ export class ResumesService {
   constructor(
     @Inject(StorageService) private readonly storageService: StorageService,
     @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Optional() @InjectQueue(RESUME_QUEUE) private readonly resumeQueue?: Queue,
   ) {}
 
   /**
@@ -75,6 +80,7 @@ export class ResumesService {
     file: UploadedResumeFile,
     candidateId?: string,
     jobId?: string,
+    applicationId?: string,
   ) {
     if (!file) {
       throw new BadRequestException('No resume file provided');
@@ -124,8 +130,20 @@ export class ResumesService {
       }
     }
 
+    // Enqueue background parsing job
+    if (this.resumeQueue) {
+      await this.resumeQueue.add('parse-resume', {
+        organizationId,
+        candidateId,
+        jobId,
+        applicationId,
+        resumeKey: key,
+        resumeUrl: url,
+      });
+    }
+
     return {
-      message: 'Resume uploaded successfully',
+      message: 'Resume uploaded successfully and queued for AI parsing',
       key,
       resumeUrl: url,
       fileName: file.originalname,
@@ -193,6 +211,17 @@ export class ResumesService {
           },
         });
       }
+    }
+
+    // Enqueue parsing job if key is provided
+    if (dto.key && this.resumeQueue) {
+      await this.resumeQueue.add('parse-resume', {
+        organizationId,
+        candidateId: dto.candidateId,
+        applicationId: dto.applicationId,
+        resumeKey: dto.key,
+        resumeUrl: dto.resumeUrl,
+      });
     }
 
     return {

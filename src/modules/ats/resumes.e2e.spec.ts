@@ -118,7 +118,7 @@ describe('ATS Resumes Upload E2E Test Suite', () => {
       .attach('file', mockFileBuffer, 'marcus_cv.pdf')
       .expect(201);
 
-    expect(res.body.message).toBe('Resume uploaded successfully');
+    expect(res.body.message).toContain('Resume uploaded successfully');
     expect(res.body.key).toBeDefined();
     expect(res.body.resumeUrl).toBeDefined();
 

@@ -108,6 +108,38 @@ export class ApplicationsController {
     return this.applicationsService.getTimeline(orgId, id);
   }
 
+  @Get(':id/ats-score')
+  @Roles(
+    SystemRoleType.SUPER_ADMIN,
+    SystemRoleType.ADMIN,
+    SystemRoleType.RECRUITER,
+    SystemRoleType.MANAGER,
+    SystemRoleType.EMPLOYEE,
+  )
+  @Permissions('applications:read')
+  getAtsScore(
+    @CurrentUser('organizationId') orgId: string,
+    @Param('id') id: string,
+  ) {
+    return this.applicationsService.getAtsScore(orgId, id);
+  }
+
+  @Post(':id/reparse')
+  @HttpCode(HttpStatus.OK)
+  @Roles(
+    SystemRoleType.SUPER_ADMIN,
+    SystemRoleType.ADMIN,
+    SystemRoleType.RECRUITER,
+    SystemRoleType.MANAGER,
+  )
+  @Permissions('applications:update')
+  reparseApplication(
+    @CurrentUser('organizationId') orgId: string,
+    @Param('id') id: string,
+  ) {
+    return this.applicationsService.reparseApplication(orgId, id);
+  }
+
   @Patch(':id/stage')
   @Roles(
     SystemRoleType.SUPER_ADMIN,
