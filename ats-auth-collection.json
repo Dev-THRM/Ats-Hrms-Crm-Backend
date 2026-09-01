@@ -1,0 +1,370 @@
+{
+  "info": {
+    "name": "ATS-HRMS-CRM - Phase 0 Auth & RBAC Suite",
+    "_postman_id": "a8f34567-89ab-4cde-0123-456789abcdef",
+    "description": "Complete Phase 0 Postman collection for testing Multi-Tenant Auth, RBAC permissions, and Plan-gated actions with pre-configured JSON request bodies.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refreshToken",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Check Slug Availability",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/auth/check-slug?slug=acme-tech",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "auth",
+            "check-slug"
+          ],
+          "query": [
+            {
+              "key": "slug",
+              "value": "acme-tech"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "2. Register Organization & Owner (POST with Body)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 201) {",
+              "    const json = pm.response.json();",
+              "    if (json.tokens && json.tokens.accessToken) {",
+              "        pm.collectionVariables.set('accessToken', json.tokens.accessToken);",
+              "        pm.collectionVariables.set('refreshToken', json.tokens.refreshToken);",
+              "        console.log('Access token and Refresh token automatically saved');",
+              "    }",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"organizationName\": \"Acme Technologies\",\n  \"organizationSlug\": \"acme-tech\",\n  \"firstName\": \"Alex\",\n  \"lastName\": \"Morgan\",\n  \"email\": \"alex@acme.com\",\n  \"password\": \"Password123!\",\n  \"phone\": \"+1234567890\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/auth/register",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "auth",
+            "register"
+          ]
+        }
+      }
+    },
+    {
+      "name": "3. Login (POST with Body)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 200) {",
+              "    const json = pm.response.json();",
+              "    if (json.tokens && json.tokens.accessToken) {",
+              "        pm.collectionVariables.set('accessToken', json.tokens.accessToken);",
+              "        pm.collectionVariables.set('refreshToken', json.tokens.refreshToken);",
+              "        console.log('Tokens updated in collection variables');",
+              "    }",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"alex@acme.com\",\n  \"password\": \"Password123!\",\n  \"organizationSlug\": \"acme-tech\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/auth/login",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "auth",
+            "login"
+          ]
+        }
+      }
+    },
+    {
+      "name": "4. Get Current Profile (Me)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/auth/me?includePermissions=true",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "auth",
+            "me"
+          ],
+          "query": [
+            {
+              "key": "includePermissions",
+              "value": "true"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "5. RBAC ATS - Create Job (POST with Body)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Senior Backend Engineer\",\n  \"department\": \"Engineering\",\n  \"location\": \"Remote\",\n  \"description\": \"Looking for a NestJS & Postgres expert.\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/ats/jobs",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "ats",
+            "jobs"
+          ]
+        }
+      }
+    },
+    {
+      "name": "6. RBAC CRM - Create Lead (POST with Body)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"companyName\": \"Global Enterprise Inc\",\n  \"contactName\": \"Sarah Jenkins\",\n  \"contactEmail\": \"sarah@global.com\",\n  \"dealValue\": 75000\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/crm/leads",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "crm",
+            "leads"
+          ]
+        }
+      }
+    },
+    {
+      "name": "7. RBAC HRMS - Create Employee (POST with Body)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"firstName\": \"Emily\",\n  \"lastName\": \"Watson\",\n  \"workEmail\": \"emily@acme.com\",\n  \"department\": \"Product Design\",\n  \"designation\": \"Lead UI/UX Designer\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/hrms/employees",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "hrms",
+            "employees"
+          ]
+        }
+      }
+    },
+    {
+      "name": "8. Refresh Tokens (POST with Body)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 200) {",
+              "    const json = pm.response.json();",
+              "    if (json.accessToken) {",
+              "        pm.collectionVariables.set('accessToken', json.accessToken);",
+              "        pm.collectionVariables.set('refreshToken', json.refreshToken);",
+              "        console.log('Rotated tokens updated in collection variables');",
+              "    }",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/auth/refresh",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "auth",
+            "refresh"
+          ]
+        }
+      }
+    },
+    {
+      "name": "9. Logout (POST with Body)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/auth/logout",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "auth",
+            "logout"
+          ]
+        }
+      }
+    }
+  ]
+}
