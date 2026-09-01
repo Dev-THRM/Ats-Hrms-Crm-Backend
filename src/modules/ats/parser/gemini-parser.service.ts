@@ -69,8 +69,10 @@ export class GeminiParserService {
     }
 
     try {
+      const modelName =
+        this.config.get<string>('GEMINI_MODEL') || 'gemini-flash-lite-latest';
       const model = this.genAI.getGenerativeModel({
-        model: 'gemini-1.5-flash',
+        model: modelName,
         generationConfig: {
           responseMimeType: 'application/json',
           temperature: 0.1, // low temperature for precise, deterministic analysis

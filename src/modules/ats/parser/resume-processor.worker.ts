@@ -176,15 +176,20 @@ export class ResumeProcessorWorker extends WorkerHost {
         ) as Prisma.InputJsonValue;
 
         // Update application to REJECTED
-        await this.prisma.application.update({
-          where: { id: applicationId },
-          data: {
-            status: ApplicationStatus.REJECTED,
-            rejectionReason,
-            currentStageId: targetStageId,
-            metadata: updatedMetadata,
-          },
-        });
+        try {
+          await this.prisma.application.update({
+            where: { id: applicationId },
+            data: {
+              status: ApplicationStatus.REJECTED,
+              rejectionReason,
+              currentStageId: targetStageId,
+              metadata: updatedMetadata,
+            },
+          });
+        } catch {
+          this.logger.warn(`Application ${applicationId} no longer exists; skipping update`);
+          return { success: false, reason: 'Application not found' };
+        }
 
         const effectiveOrgId = organizationId || application.organizationId;
 
@@ -251,13 +256,18 @@ export class ResumeProcessorWorker extends WorkerHost {
           }),
         ) as Prisma.InputJsonValue;
 
-        await this.prisma.application.update({
-          where: { id: applicationId },
-          data: {
-            atsScore,
-            metadata: updatedMetadata,
-          },
-        });
+        try {
+          await this.prisma.application.update({
+            where: { id: applicationId },
+            data: {
+              atsScore,
+              metadata: updatedMetadata,
+            },
+          });
+        } catch {
+          this.logger.warn(`Application ${applicationId} no longer exists; skipping update`);
+          return { success: false, reason: 'Application not found' };
+        }
 
         this.logger.log(
           `Application ${applicationId} parsed successfully. ATS Score: ${atsScore}/100`,

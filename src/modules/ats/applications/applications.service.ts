@@ -165,7 +165,7 @@ export class ApplicationsService {
     const resumeKey =
       (dto.metadata as Record<string, any>)?.resumeKey ||
       (candidateRecord?.resumeUrl?.includes('resumes/')
-        ? candidateRecord.resumeUrl.split('storage/')[1] || candidateRecord.resumeUrl
+        ? 'resumes/' + candidateRecord.resumeUrl.split('resumes/')[1]
         : null);
 
     if (resumeKey && this.resumeQueue) {
