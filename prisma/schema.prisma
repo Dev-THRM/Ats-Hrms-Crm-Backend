@@ -48,12 +48,13 @@ model Organization {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  users         User[]
-  roles         Role[]
-  subscriptions Subscription[]
-  jobs          Job[]
-  candidates    Candidate[]
-  applications  Application[]
+  users               User[]
+  roles               Role[]
+  subscriptions       Subscription[]
+  jobs                Job[]
+  candidates          Candidate[]
+  applications        Application[]
+  stageTransitionLogs StageTransitionLog[]
 
   @@index([slug])
 }
@@ -77,24 +78,25 @@ model Role {
 }
 
 model User {
-  id               String    @id @default(uuid())
-  organizationId   String
-  roleId           String
-  email            String
-  passwordHash     String
-  firstName        String
-  lastName         String
-  phone            String?
-  avatarUrl        String?
-  isActive         Boolean   @default(true)
-  refreshTokenHash String?
-  lastLoginAt      DateTime?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  id                  String               @id @default(uuid())
+  organizationId      String
+  roleId              String
+  email               String
+  passwordHash        String
+  firstName           String
+  lastName            String
+  phone               String?
+  avatarUrl           String?
+  isActive            Boolean              @default(true)
+  refreshTokenHash    String?
+  lastLoginAt         DateTime?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  role         Role         @relation(fields: [roleId], references: [id], onDelete: Restrict)
-  jobs         Job[]
+  organization        Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  role                Role                 @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  jobs                Job[]
+  stageTransitionLogs StageTransitionLog[]
 
   @@unique([email, organizationId])
   @@index([organizationId])
@@ -251,4 +253,32 @@ model Application {
   @@index([currentStageId])
   @@index([status])
   @@index([appliedAt])
+}
+
+enum EntityPipelineType {
+  APPLICATION
+  CRM_DEAL
+  CRM_LEAD
+}
+
+model StageTransitionLog {
+  id             String             @id @default(uuid())
+  organizationId String
+  organization   Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  entityType     EntityPipelineType @default(APPLICATION)
+  entityId       String // e.g. applicationId or dealId
+  fromStageId    String?
+  fromStageName  String?
+  toStageId      String
+  toStageName    String
+  performedById  String?
+  performedBy    User?              @relation(fields: [performedById], references: [id], onDelete: SetNull)
+  reason         String?
+  notes          String?
+  metadata       Json?
+  createdAt      DateTime           @default(now())
+
+  @@index([organizationId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
 }

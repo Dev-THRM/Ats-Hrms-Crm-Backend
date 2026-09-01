@@ -242,7 +242,20 @@ describe('ATS Candidates & Applications E2E Test', () => {
     expect(res.body.rejectionReason).toBe('Position closed before interview');
   });
 
-  it('12. Delete application (DELETE /api/v1/ats/applications/:id)', async () => {
+  it('12. Get transition timeline history (GET /api/v1/ats/applications/:id/timeline)', async () => {
+    const res = await request(app.getHttpServer())
+      .get(`/api/v1/ats/applications/${application1Id}/timeline`)
+      .set('Authorization', `Bearer ${accessToken}`)
+      .expect(200);
+
+    expect(res.body).toBeInstanceOf(Array);
+    expect(res.body.length).toBeGreaterThanOrEqual(3); // Initial -> Screening -> Hired
+    expect(res.body[0].toStageName).toBe('Applied');
+    expect(res.body[1].toStageName).toBe('Screening');
+    expect(res.body[2].toStageName).toBe('Hired');
+  });
+
+  it('13. Delete application (DELETE /api/v1/ats/applications/:id)', async () => {
     const res = await request(app.getHttpServer())
       .delete(`/api/v1/ats/applications/${application2Id}`)
       .set('Authorization', `Bearer ${accessToken}`)

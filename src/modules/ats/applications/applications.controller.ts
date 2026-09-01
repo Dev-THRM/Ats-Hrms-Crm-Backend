@@ -46,9 +46,14 @@ export class ApplicationsController {
   @Permissions('applications:create')
   async create(
     @CurrentUser('organizationId') orgId: string,
+    @CurrentUser('userId') userId: string,
     @Body() dto: CreateApplicationDto,
   ) {
-    const application = await this.applicationsService.create(orgId, dto);
+    const application = await this.applicationsService.create(
+      orgId,
+      dto,
+      userId,
+    );
     return {
       message: 'Application submitted successfully',
       application,
@@ -87,6 +92,22 @@ export class ApplicationsController {
     return this.applicationsService.findOne(orgId, id);
   }
 
+  @Get(':id/timeline')
+  @Roles(
+    SystemRoleType.SUPER_ADMIN,
+    SystemRoleType.ADMIN,
+    SystemRoleType.RECRUITER,
+    SystemRoleType.MANAGER,
+    SystemRoleType.EMPLOYEE,
+  )
+  @Permissions('applications:read')
+  getTimeline(
+    @CurrentUser('organizationId') orgId: string,
+    @Param('id') id: string,
+  ) {
+    return this.applicationsService.getTimeline(orgId, id);
+  }
+
   @Patch(':id/stage')
   @Roles(
     SystemRoleType.SUPER_ADMIN,
@@ -97,6 +118,7 @@ export class ApplicationsController {
   @Permissions('applications:update')
   moveToStage(
     @CurrentUser('organizationId') orgId: string,
+    @CurrentUser('userId') userId: string,
     @Param('id') id: string,
     @Body() dto: UpdateApplicationStageDto,
   ) {
@@ -105,6 +127,7 @@ export class ApplicationsController {
       id,
       dto.stageId,
       dto.rejectionReason,
+      userId,
     );
   }
 

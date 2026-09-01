@@ -5,10 +5,11 @@ import {
   ConflictException,
   Inject,
 } from '@nestjs/common';
-import { Prisma, ApplicationStatus } from '@prisma/client';
+import { Prisma, ApplicationStatus, EntityPipelineType } from '@prisma/client';
 import { PrismaService } from '../../shared/prisma/prisma.service.js';
 import { CandidatesService } from '../candidates/candidates.service.js';
 import { PipelineStagesService } from '../jobs/pipeline-stages.service.js';
+import { StageTransitionService } from '../../shared/pipelines/stage-transition.service.js';
 import { CreateApplicationDto } from './dto/create-application.dto.js';
 import { QueryApplicationsDto } from './dto/query-applications.dto.js';
 
@@ -20,12 +21,18 @@ export class ApplicationsService {
     private readonly candidatesService: CandidatesService,
     @Inject(PipelineStagesService)
     private readonly pipelineStagesService: PipelineStagesService,
+    @Inject(StageTransitionService)
+    private readonly stageTransitionService: StageTransitionService,
   ) {}
 
   /**
-   * Submits a candidate application for a specific job.
+   * Submits a candidate application for a specific job and records initial stage transition.
    */
-  async create(organizationId: string, dto: CreateApplicationDto) {
+  async create(
+    organizationId: string,
+    dto: CreateApplicationDto,
+    userId?: string,
+  ) {
     const job = await this.prisma.job.findFirst({
       where: {
         id: dto.jobId,
@@ -87,6 +94,8 @@ export class ApplicationsService {
 
     // Determine initial stage
     let currentStageId = dto.stageId;
+    let initialStageName = 'Applied';
+
     if (currentStageId) {
       const matchingStage = job.pipelineStages.find(
         (s) => s.id === currentStageId,
@@ -96,17 +105,20 @@ export class ApplicationsService {
           `Stage ID '${currentStageId}' does not belong to this job pipeline`,
         );
       }
+      initialStageName = matchingStage.name;
     } else {
       if (job.pipelineStages.length > 0) {
         currentStageId = job.pipelineStages[0].id;
+        initialStageName = job.pipelineStages[0].name;
       } else {
         const createdStages =
           await this.pipelineStagesService.createStagesForJob(job.id);
         currentStageId = createdStages[0].id;
+        initialStageName = createdStages[0].name;
       }
     }
 
-    return this.prisma.application.create({
+    const application = await this.prisma.application.create({
       data: {
         organizationId,
         jobId: dto.jobId,
@@ -129,6 +141,21 @@ export class ApplicationsService {
         currentStage: true,
       },
     });
+
+    // Record initial stage transition in audit log
+    await this.stageTransitionService.recordTransition({
+      organizationId,
+      entityType: EntityPipelineType.APPLICATION,
+      entityId: application.id,
+      fromStageId: null,
+      fromStageName: null,
+      toStageId: currentStageId,
+      toStageName: initialStageName,
+      performedById: userId,
+      notes: 'Initial application submission',
+    });
+
+    return application;
   }
 
   /**
@@ -230,13 +257,14 @@ export class ApplicationsService {
   }
 
   /**
-   * Transitions an application to a new pipeline stage.
+   * Transitions an application to a new pipeline stage and records an immutable audit entry.
    */
   async moveToStage(
     organizationId: string,
     applicationId: string,
     targetStageId: string,
     rejectionReason?: string,
+    userId?: string,
   ) {
     const application = await this.findOne(organizationId, applicationId);
 
@@ -255,14 +283,19 @@ export class ApplicationsService {
 
     if (stageNameLower.includes('reject')) {
       status = ApplicationStatus.REJECTED;
-    } else if (stageNameLower.includes('hired') || stageNameLower.includes('hire')) {
+    } else if (
+      stageNameLower.includes('hired') ||
+      stageNameLower.includes('hire')
+    ) {
       status = ApplicationStatus.HIRED;
-    } else if (status === ApplicationStatus.REJECTED || status === ApplicationStatus.HIRED) {
-      // Re-activating from terminal stage to active review
+    } else if (
+      status === ApplicationStatus.REJECTED ||
+      status === ApplicationStatus.HIRED
+    ) {
       status = ApplicationStatus.ACTIVE;
     }
 
-    return this.prisma.application.update({
+    const updated = await this.prisma.application.update({
       where: { id: applicationId },
       data: {
         currentStageId: targetStageId,
@@ -282,6 +315,34 @@ export class ApplicationsService {
         currentStage: true,
       },
     });
+
+    // Record stage transition audit log via generic service
+    await this.stageTransitionService.recordTransition({
+      organizationId,
+      entityType: EntityPipelineType.APPLICATION,
+      entityId: applicationId,
+      fromStageId: application.currentStageId,
+      fromStageName: application.currentStage.name,
+      toStageId: targetStage.id,
+      toStageName: targetStage.name,
+      performedById: userId,
+      reason: rejectionReason,
+    });
+
+    return updated;
+  }
+
+  /**
+   * Retrieves the historical transition timeline for an application.
+   */
+  async getTimeline(organizationId: string, applicationId: string) {
+    await this.findOne(organizationId, applicationId);
+
+    return this.stageTransitionService.getEntityTimeline(
+      organizationId,
+      EntityPipelineType.APPLICATION,
+      applicationId,
+    );
   }
 
   /**

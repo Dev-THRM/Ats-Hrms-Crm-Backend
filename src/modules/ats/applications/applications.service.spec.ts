@@ -3,6 +3,7 @@ import { ApplicationsService } from './applications.service.js';
 import { PrismaService } from '../../shared/prisma/prisma.service.js';
 import { CandidatesService } from '../candidates/candidates.service.js';
 import { PipelineStagesService } from '../jobs/pipeline-stages.service.js';
+import { StageTransitionService } from '../../shared/pipelines/stage-transition.service.js';
 import { ConflictException, NotFoundException, BadRequestException } from '@nestjs/common';
 import { ApplicationStatus } from '@prisma/client';
 
@@ -11,6 +12,7 @@ describe('ApplicationsService', () => {
   let prisma: PrismaService;
   let candidatesService: CandidatesService;
   let pipelineStagesService: PipelineStagesService;
+  let stageTransitionService: StageTransitionService;
 
   const mockOrgId = 'org-123';
 
@@ -41,10 +43,16 @@ describe('ApplicationsService', () => {
       createStagesForJob: vi.fn(),
     } as unknown as PipelineStagesService;
 
+    stageTransitionService = {
+      recordTransition: vi.fn().mockResolvedValue({ id: 'log-1' }),
+      getEntityTimeline: vi.fn().mockResolvedValue([]),
+    } as unknown as StageTransitionService;
+
     service = new ApplicationsService(
       prisma,
       candidatesService,
       pipelineStagesService,
+      stageTransitionService,
     );
   });
 
@@ -86,6 +94,7 @@ describe('ApplicationsService', () => {
 
       expect(result.id).toBe('app-1');
       expect(result.currentStageId).toBe('st-1');
+      expect(stageTransitionService.recordTransition).toHaveBeenCalled();
     });
 
     it('should throw ConflictException if candidate already applied', async () => {
@@ -142,6 +151,7 @@ describe('ApplicationsService', () => {
             { id: 'st-2', name: 'Interview', order: 1 },
           ],
         },
+        currentStage: { id: 'st-1', name: 'Applied' },
       };
 
       vi.spyOn(service, 'findOne').mockResolvedValue(mockApp as any);
@@ -154,6 +164,7 @@ describe('ApplicationsService', () => {
       const result = await service.moveToStage(mockOrgId, 'app-1', 'st-2');
 
       expect(result.currentStageId).toBe('st-2');
+      expect(stageTransitionService.recordTransition).toHaveBeenCalled();
     });
 
     it('should auto-mark status as REJECTED if moved to Rejected stage', async () => {
@@ -167,6 +178,7 @@ describe('ApplicationsService', () => {
             { id: 'st-reject', name: 'Rejected', order: 5 },
           ],
         },
+        currentStage: { id: 'st-1', name: 'Applied' },
       };
 
       vi.spyOn(service, 'findOne').mockResolvedValue(mockApp as any);
@@ -179,6 +191,7 @@ describe('ApplicationsService', () => {
       const result = await service.moveToStage(mockOrgId, 'app-1', 'st-reject');
 
       expect(result.status).toBe(ApplicationStatus.REJECTED);
+      expect(stageTransitionService.recordTransition).toHaveBeenCalled();
     });
   });
 });
