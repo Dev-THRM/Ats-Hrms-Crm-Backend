@@ -49,6 +49,7 @@ export class JobsService {
       const job = await tx.job.create({
         data: {
           ...jobData,
+          description: jobData.description ?? '',
           organizationId,
           createdById: userId,
           salaryMin:

@@ -52,6 +52,8 @@ model Organization {
   roles         Role[]
   subscriptions Subscription[]
   jobs          Job[]
+  candidates    Candidate[]
+  applications  Application[]
 
   @@index([slug])
 }
@@ -123,27 +125,28 @@ model Subscription {
 }
 
 model Job {
-  id             String          @id @default(uuid())
-  organizationId String
-  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  title          String
-  description    String
-  department     String?
-  location       String?
-  employmentType EmploymentType  @default(FULL_TIME)
-  status         JobStatus       @default(DRAFT)
-  salaryMin      Decimal?
-  salaryMax      Decimal?
-  salaryCurrency String?         @default("INR")
-  salaryVisible  Boolean         @default(true)
+  id              String           @id @default(uuid())
+  organizationId  String
+  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  title           String
+  description     String
+  department      String?
+  location        String?
+  employmentType  EmploymentType   @default(FULL_TIME)
+  status          JobStatus        @default(DRAFT)
+  salaryMin       Decimal?
+  salaryMax       Decimal?
+  salaryCurrency  String?          @default("INR")
+  salaryVisible   Boolean          @default(true)
   experienceMin   Int?
   experienceMax   Int?
   experienceLevel ExperienceLevel?
   createdById     String
-  createdBy       User            @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  createdBy       User             @relation(fields: [createdById], references: [id], onDelete: Restrict)
   pipelineStages  PipelineStage[]
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
+  applications    Application[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 
   @@index([organizationId])
   @@index([status])
@@ -174,14 +177,78 @@ enum EmploymentType {
 }
 
 model PipelineStage {
-  id        String   @id @default(uuid())
-  jobId     String
-  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  name      String // "Applied", "Screening", "Interview", "Offer", "Hired", "Rejected"
-  order     Int // for sorting stages left-to-right
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String        @id @default(uuid())
+  jobId        String
+  job          Job           @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  name         String // "Applied", "Screening", "Interview", "Offer", "Hired", "Rejected"
+  order        Int // for sorting stages left-to-right
+  applications Application[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 
   @@unique([jobId, order])
   @@index([jobId])
+}
+
+enum ApplicationStatus {
+  ACTIVE
+  HIRED
+  REJECTED
+  WITHDRAWN
+}
+
+model Candidate {
+  id             String        @id @default(uuid())
+  organizationId String
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  firstName      String
+  lastName       String
+  email          String
+  phone          String?
+  currentCompany String?
+  currentTitle   String?
+  location       String?
+  skills         String[]      @default([])
+  resumeUrl      String?
+  portfolioUrl   String?
+  linkedinUrl    String?
+  githubUrl      String?
+  source         String?       @default("CAREER_PORTAL") // CAREER_PORTAL, LINKEDIN, REFERRAL, SOURCED, etc.
+  tags           String[]      @default([])
+  applications   Application[]
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@unique([email, organizationId])
+  @@index([organizationId])
+  @@index([email])
+  @@index([createdAt])
+}
+
+model Application {
+  id              String            @id @default(uuid())
+  organizationId  String
+  organization    Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  candidateId     String
+  candidate       Candidate         @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  jobId           String
+  job             Job               @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  currentStageId  String
+  currentStage    PipelineStage     @relation(fields: [currentStageId], references: [id], onDelete: Restrict)
+  status          ApplicationStatus @default(ACTIVE)
+  atsScore        Float? // AI ATS score (0-100)
+  coverLetter     String?
+  rejectionReason String?
+  metadata        Json?
+  appliedAt       DateTime          @default(now())
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@unique([candidateId, jobId])
+  @@index([organizationId])
+  @@index([candidateId])
+  @@index([jobId])
+  @@index([currentStageId])
+  @@index([status])
+  @@index([appliedAt])
 }

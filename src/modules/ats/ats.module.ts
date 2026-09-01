@@ -4,11 +4,30 @@ import { AtsController } from './ats.controller.js';
 import { JobsController } from './jobs/jobs.controller.js';
 import { JobsService } from './jobs/jobs.service.js';
 import { PipelineStagesService } from './jobs/pipeline-stages.service.js';
+import { CandidatesController } from './candidates/candidates.controller.js';
+import { CandidatesService } from './candidates/candidates.service.js';
+import { ApplicationsController } from './applications/applications.controller.js';
+import { ApplicationsService } from './applications/applications.service.js';
 
 @Module({
   imports: [SharedModule],
-  controllers: [AtsController, JobsController],
-  providers: [JobsService, PipelineStagesService],
-  exports: [JobsService, PipelineStagesService],
+  controllers: [
+    AtsController,
+    JobsController,
+    CandidatesController,
+    ApplicationsController,
+  ],
+  providers: [
+    JobsService,
+    PipelineStagesService,
+    CandidatesService,
+    ApplicationsService,
+  ],
+  exports: [
+    JobsService,
+    PipelineStagesService,
+    CandidatesService,
+    ApplicationsService,
+  ],
 })
 export class AtsModule {}

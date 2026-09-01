@@ -1,0 +1,141 @@
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+  HttpCode,
+  HttpStatus,
+  Inject,
+} from '@nestjs/common';
+import { AppPlan, SystemRoleType } from '@prisma/client';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
+import { PlanGuard } from '../../../common/guards/plan.guard.js';
+import { RolesGuard } from '../../../common/guards/roles.guard.js';
+import { RequiresPlan } from '../../../common/decorators/requires-plan.decorator.js';
+import { Roles } from '../../../common/decorators/roles.decorator.js';
+import { Permissions } from '../../../common/decorators/permissions.decorator.js';
+import { CurrentUser } from '../../../common/decorators/current-user.decorator.js';
+import { ApplicationsService } from './applications.service.js';
+import { CreateApplicationDto } from './dto/create-application.dto.js';
+import { QueryApplicationsDto } from './dto/query-applications.dto.js';
+import { UpdateApplicationStageDto } from './dto/update-application-stage.dto.js';
+import { UpdateApplicationStatusDto } from './dto/update-application-status.dto.js';
+
+@Controller('ats/applications')
+@UseGuards(JwtAuthGuard, PlanGuard, RolesGuard)
+@RequiresPlan(AppPlan.ATS)
+export class ApplicationsController {
+  constructor(
+    @Inject(ApplicationsService)
+    private readonly applicationsService: ApplicationsService,
+  ) {}
+
+  @Post()
+  @HttpCode(HttpStatus.CREATED)
+  @Roles(
+    SystemRoleType.SUPER_ADMIN,
+    SystemRoleType.ADMIN,
+    SystemRoleType.RECRUITER,
+    SystemRoleType.MANAGER,
+  )
+  @Permissions('applications:create')
+  async create(
+    @CurrentUser('organizationId') orgId: string,
+    @Body() dto: CreateApplicationDto,
+  ) {
+    const application = await this.applicationsService.create(orgId, dto);
+    return {
+      message: 'Application submitted successfully',
+      application,
+    };
+  }
+
+  @Get()
+  @Roles(
+    SystemRoleType.SUPER_ADMIN,
+    SystemRoleType.ADMIN,
+    SystemRoleType.RECRUITER,
+    SystemRoleType.MANAGER,
+    SystemRoleType.EMPLOYEE,
+  )
+  @Permissions('applications:read')
+  findAll(
+    @CurrentUser('organizationId') orgId: string,
+    @Query() query: QueryApplicationsDto,
+  ) {
+    return this.applicationsService.findAll(orgId, query);
+  }
+
+  @Get(':id')
+  @Roles(
+    SystemRoleType.SUPER_ADMIN,
+    SystemRoleType.ADMIN,
+    SystemRoleType.RECRUITER,
+    SystemRoleType.MANAGER,
+    SystemRoleType.EMPLOYEE,
+  )
+  @Permissions('applications:read')
+  findOne(
+    @CurrentUser('organizationId') orgId: string,
+    @Param('id') id: string,
+  ) {
+    return this.applicationsService.findOne(orgId, id);
+  }
+
+  @Patch(':id/stage')
+  @Roles(
+    SystemRoleType.SUPER_ADMIN,
+    SystemRoleType.ADMIN,
+    SystemRoleType.RECRUITER,
+    SystemRoleType.MANAGER,
+  )
+  @Permissions('applications:update')
+  moveToStage(
+    @CurrentUser('organizationId') orgId: string,
+    @Param('id') id: string,
+    @Body() dto: UpdateApplicationStageDto,
+  ) {
+    return this.applicationsService.moveToStage(
+      orgId,
+      id,
+      dto.stageId,
+      dto.rejectionReason,
+    );
+  }
+
+  @Patch(':id/status')
+  @Roles(
+    SystemRoleType.SUPER_ADMIN,
+    SystemRoleType.ADMIN,
+    SystemRoleType.RECRUITER,
+    SystemRoleType.MANAGER,
+  )
+  @Permissions('applications:update')
+  updateStatus(
+    @CurrentUser('organizationId') orgId: string,
+    @Param('id') id: string,
+    @Body() dto: UpdateApplicationStatusDto,
+  ) {
+    return this.applicationsService.updateStatus(
+      orgId,
+      id,
+      dto.status,
+      dto.rejectionReason,
+    );
+  }
+
+  @Delete(':id')
+  @Roles(SystemRoleType.SUPER_ADMIN, SystemRoleType.ADMIN)
+  @Permissions('applications:delete')
+  remove(
+    @CurrentUser('organizationId') orgId: string,
+    @Param('id') id: string,
+  ) {
+    return this.applicationsService.remove(orgId, id);
+  }
+}
