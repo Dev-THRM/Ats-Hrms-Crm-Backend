@@ -10,14 +10,16 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  Inject,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
 import { PlanGuard } from '../../../common/guards/plan.guard.js';
 import { RolesGuard } from '../../../common/guards/roles.guard.js';
 import { RequiresPlan } from '../../../common/decorators/requires-plan.decorator.js';
+import { Roles } from '../../../common/decorators/roles.decorator.js';
 import { Permissions } from '../../../common/decorators/permissions.decorator.js';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator.js';
-import { AppPlan } from '@prisma/client';
+import { AppPlan, SystemRoleType } from '@prisma/client';
 import { InterviewsService } from './interviews.service.js';
 import { CreateInterviewDto } from './dto/create-interview.dto.js';
 import { UpdateInterviewDto } from './dto/update-interview.dto.js';
@@ -28,10 +30,19 @@ import { SubmitInterviewFeedbackDto } from './dto/submit-feedback.dto.js';
 @UseGuards(JwtAuthGuard, PlanGuard, RolesGuard)
 @RequiresPlan(AppPlan.ATS)
 export class InterviewsController {
-  constructor(private readonly interviewsService: InterviewsService) {}
+  constructor(
+    @Inject(InterviewsService)
+    private readonly interviewsService: InterviewsService,
+  ) {}
 
   @Post()
-  @Permissions('interviews:*')
+  @Roles(
+    SystemRoleType.SUPER_ADMIN,
+    SystemRoleType.ADMIN,
+    SystemRoleType.RECRUITER,
+    SystemRoleType.MANAGER,
+  )
+  @Permissions('interviews:create', 'interviews:*')
   @HttpCode(HttpStatus.CREATED)
   async create(
     @CurrentUser('organizationId') orgId: string,
@@ -46,6 +57,13 @@ export class InterviewsController {
   }
 
   @Get()
+  @Roles(
+    SystemRoleType.SUPER_ADMIN,
+    SystemRoleType.ADMIN,
+    SystemRoleType.RECRUITER,
+    SystemRoleType.MANAGER,
+    SystemRoleType.EMPLOYEE,
+  )
   @Permissions('interviews:read', 'interviews:*')
   async findAll(
     @CurrentUser('organizationId') orgId: string,
@@ -55,6 +73,11 @@ export class InterviewsController {
   }
 
   @Post('reminders/trigger')
+  @Roles(
+    SystemRoleType.SUPER_ADMIN,
+    SystemRoleType.ADMIN,
+    SystemRoleType.RECRUITER,
+  )
   @Permissions('interviews:*')
   @HttpCode(HttpStatus.OK)
   async triggerReminders(@CurrentUser('organizationId') orgId: string) {
@@ -62,6 +85,13 @@ export class InterviewsController {
   }
 
   @Get(':id')
+  @Roles(
+    SystemRoleType.SUPER_ADMIN,
+    SystemRoleType.ADMIN,
+    SystemRoleType.RECRUITER,
+    SystemRoleType.MANAGER,
+    SystemRoleType.EMPLOYEE,
+  )
   @Permissions('interviews:read', 'interviews:*')
   async findOne(
     @CurrentUser('organizationId') orgId: string,
@@ -72,7 +102,13 @@ export class InterviewsController {
   }
 
   @Patch(':id')
-  @Permissions('interviews:*')
+  @Roles(
+    SystemRoleType.SUPER_ADMIN,
+    SystemRoleType.ADMIN,
+    SystemRoleType.RECRUITER,
+    SystemRoleType.MANAGER,
+  )
+  @Permissions('interviews:update', 'interviews:*')
   async update(
     @CurrentUser('organizationId') orgId: string,
     @Param('id') id: string,
@@ -86,7 +122,13 @@ export class InterviewsController {
   }
 
   @Post(':id/feedback')
-  @Permissions('interviews:*')
+  @Roles(
+    SystemRoleType.SUPER_ADMIN,
+    SystemRoleType.ADMIN,
+    SystemRoleType.RECRUITER,
+    SystemRoleType.MANAGER,
+  )
+  @Permissions('interviews:update', 'interviews:*')
   @HttpCode(HttpStatus.OK)
   async submitFeedback(
     @CurrentUser('organizationId') orgId: string,
@@ -101,7 +143,8 @@ export class InterviewsController {
   }
 
   @Delete(':id')
-  @Permissions('interviews:*')
+  @Roles(SystemRoleType.SUPER_ADMIN, SystemRoleType.ADMIN)
+  @Permissions('interviews:delete', 'interviews:*')
   async remove(
     @CurrentUser('organizationId') orgId: string,
     @Param('id') id: string,
@@ -109,3 +152,4 @@ export class InterviewsController {
     return this.interviewsService.remove(orgId, id);
   }
 }
+
