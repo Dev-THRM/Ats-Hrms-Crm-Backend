@@ -11,6 +11,7 @@ import {
   HttpCode,
   HttpStatus,
   Inject,
+  BadRequestException,
 } from '@nestjs/common';
 import { AppPlan, SystemRoleType } from '@prisma/client';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
@@ -33,7 +34,7 @@ export class ApplicationsController {
   constructor(
     @Inject(ApplicationsService)
     private readonly applicationsService: ApplicationsService,
-  ) {}
+  ) { }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
@@ -154,10 +155,14 @@ export class ApplicationsController {
     @Param('id') id: string,
     @Body() dto: UpdateApplicationStageDto,
   ) {
+    const targetStageId = dto.stageId || dto.toStageId;
+    if (!targetStageId) {
+      throw new BadRequestException('stageId or toStageId is required');
+    }
     return this.applicationsService.moveToStage(
       orgId,
       id,
-      dto.stageId,
+      targetStageId,
       dto.rejectionReason,
       userId,
     );
