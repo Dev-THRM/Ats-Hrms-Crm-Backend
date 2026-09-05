@@ -67,7 +67,7 @@ export class RolesGuard implements CanActivate {
     let hasPermissionMatch = true;
     if (requiredPermissions && requiredPermissions.length > 0) {
       const userPermissions: string[] = user.permissions || [];
-      hasPermissionMatch = requiredPermissions.every((requiredPerm) =>
+      hasPermissionMatch = requiredPermissions.some((requiredPerm) =>
         this.matchPermission(userPermissions, requiredPerm),
       );
     }
