@@ -236,14 +236,16 @@ export class ApplicationsService {
       }),
     };
 
-    const skip = (page - 1) * limit;
+    const pageNum = Math.max(1, Number(page) || 1);
+    const limitNum = Math.max(1, Number(limit) || 10);
+    const skip = (pageNum - 1) * limitNum;
 
     const [total, applications] = await Promise.all([
       this.prisma.application.count({ where }),
       this.prisma.application.findMany({
         where,
         skip,
-        take: limit,
+        take: limitNum,
         orderBy: { [sortBy]: sortOrder },
         include: {
           candidate: true,
@@ -264,9 +266,9 @@ export class ApplicationsService {
       data: applications,
       meta: {
         total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit) || 1,
+        page: pageNum,
+        limit: limitNum,
+        totalPages: Math.ceil(total / limitNum) || 1,
       },
     };
   }
@@ -326,8 +328,21 @@ export class ApplicationsService {
 
     let status = application.status;
     const stageNameLower = targetStage.name.toLowerCase();
+    const currentStage = application.currentStage;
+    const isTargetRejected = stageNameLower.includes('reject');
 
-    if (stageNameLower.includes('reject')) {
+    // Enforce forward-only pipeline progression rule
+    if (
+      currentStage &&
+      !isTargetRejected &&
+      targetStage.order < currentStage.order
+    ) {
+      throw new BadRequestException(
+        `Cannot move application backwards from '${currentStage.name}' to '${targetStage.name}'. Recruitment pipeline stages are one-directional.`,
+      );
+    }
+
+    if (isTargetRejected) {
       status = ApplicationStatus.REJECTED;
     } else if (
       stageNameLower.includes('hired') ||
