@@ -73,6 +73,7 @@ describe('ResumesController', () => {
       mockFile,
       'cand-1',
       undefined,
+      undefined,
     );
   });
 });
