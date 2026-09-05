@@ -19,6 +19,12 @@ describe('PublicCareerService', () => {
       findMany: vi.fn(),
       findFirst: vi.fn(),
     },
+    candidate: {
+      findUnique: vi.fn(),
+    },
+    application: {
+      findUnique: vi.fn(),
+    },
   };
 
   const mockStorageService = {
