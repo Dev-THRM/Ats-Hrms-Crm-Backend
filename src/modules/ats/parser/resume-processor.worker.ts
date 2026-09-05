@@ -136,7 +136,7 @@ export class ResumeProcessorWorker extends WorkerHost {
         isAiGenerated = localAiDetection.isAiGenerated;
         aiConfidence = localAiDetection.overallConfidence;
         if (localAiDetection.reason) {
-          rejectionReason = localAiDetection.reason;
+          rejectionReason = `AI-Generated Resume Detected: ${localAiDetection.reason}`;
         }
         aiDetectionPayload = {
           ...localAiDetection,
