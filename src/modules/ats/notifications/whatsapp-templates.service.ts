@@ -10,6 +10,17 @@ export interface StageUpdateTemplateParams {
   language?: string;
 }
 
+export interface InterviewMessageParams {
+  candidateName: string;
+  jobTitle: string;
+  companyName: string;
+  interviewTitle: string;
+  scheduledAt: Date | string;
+  meetingLink: string;
+  durationMinutes?: number;
+  language?: string;
+}
+
 export interface RenderedTemplate {
   templateName: string;
   languageCode: string;
@@ -75,6 +86,85 @@ export class WhatsAppTemplatesService {
       templateName = 'ats_stage_generic_update';
       bodyText = `Hi ${candidateName}, your application for the ${jobTitle} role at ${companyName} has been updated to stage: ${stageName}. We will keep you updated on the next steps!`;
     }
+
+    return {
+      templateName,
+      languageCode: language,
+      bodyText,
+      parameters,
+    };
+  }
+
+  /**
+   * Renders automated WhatsApp confirmation when an interview is scheduled with Google Meet link.
+   */
+  renderInterviewScheduledMessage(params: InterviewMessageParams): RenderedTemplate {
+    const {
+      candidateName,
+      jobTitle,
+      companyName,
+      interviewTitle,
+      scheduledAt,
+      meetingLink,
+      durationMinutes = 45,
+      language = 'en',
+    } = params;
+
+    const dateStr =
+      scheduledAt instanceof Date
+        ? scheduledAt.toUTCString()
+        : new Date(scheduledAt).toUTCString();
+
+    const templateName = 'ats_interview_scheduled';
+    const bodyText = `Hi ${candidateName}, your ${interviewTitle} for the ${jobTitle} position at ${companyName} has been scheduled!\n📅 Date & Time (UTC): ${dateStr}\n⏱ Duration: ${durationMinutes} mins\n🔗 Google Meet Link: ${meetingLink}\n\nPlease be online 5 minutes before the start time. Good luck!`;
+
+    const parameters: Record<string, string> = {
+      '1': candidateName,
+      '2': interviewTitle,
+      '3': jobTitle,
+      '4': companyName,
+      '5': dateStr,
+      '6': meetingLink,
+    };
+
+    return {
+      templateName,
+      languageCode: language,
+      bodyText,
+      parameters,
+    };
+  }
+
+  /**
+   * Renders automated WhatsApp 1-day reminder prior to the interview date.
+   */
+  renderInterviewReminderMessage(params: InterviewMessageParams): RenderedTemplate {
+    const {
+      candidateName,
+      jobTitle,
+      companyName,
+      interviewTitle,
+      scheduledAt,
+      meetingLink,
+      language = 'en',
+    } = params;
+
+    const dateStr =
+      scheduledAt instanceof Date
+        ? scheduledAt.toUTCString()
+        : new Date(scheduledAt).toUTCString();
+
+    const templateName = 'ats_interview_reminder';
+    const bodyText = `Hi ${candidateName}, this is a friendly reminder that your ${interviewTitle} for ${jobTitle} at ${companyName} is tomorrow at ${dateStr}!\n🔗 Google Meet Link: ${meetingLink}\n\nWe look forward to speaking with you.`;
+
+    const parameters: Record<string, string> = {
+      '1': candidateName,
+      '2': interviewTitle,
+      '3': jobTitle,
+      '4': companyName,
+      '5': dateStr,
+      '6': meetingLink,
+    };
 
     return {
       templateName,

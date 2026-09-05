@@ -1,0 +1,98 @@
+import { Injectable } from '@nestjs/common';
+
+export interface CalendarEventDetails {
+  title: string;
+  description: string;
+  start: Date;
+  durationMinutes: number;
+  meetingLink?: string;
+  organizerEmail?: string;
+  candidateName?: string;
+}
+
+@Injectable()
+export class CalendarService {
+  /**
+   * Generates a standard formatted Google Meet room URL (e.g. https://meet.google.com/abc-defg-hij).
+   */
+  generateGoogleMeetLink(seed?: string): string {
+    const chars = 'abcdefghijklmnopqrstuvwxyz';
+
+    let code1 = '';
+    let code2 = '';
+    let code3 = '';
+
+    if (seed) {
+      // Deterministic hash based on seed/interviewId
+      let hash = 0;
+      for (let i = 0; i < seed.length; i++) {
+        hash = (hash << 5) - hash + seed.charCodeAt(i);
+        hash |= 0;
+      }
+      const absHash = Math.abs(hash).toString(36).padEnd(10, 'x');
+      code1 = absHash.substring(0, 3);
+      code2 = absHash.substring(3, 7);
+      code3 = absHash.substring(7, 10);
+    } else {
+      for (let i = 0; i < 3; i++) code1 += chars.charAt(Math.floor(Math.random() * chars.length));
+      for (let i = 0; i < 4; i++) code2 += chars.charAt(Math.floor(Math.random() * chars.length));
+      for (let i = 0; i < 3; i++) code3 += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+
+    return `https://meet.google.com/${code1}-${code2}-${code3}`;
+  }
+
+  /**
+   * Generates a 1-click Google Calendar web event creation URL.
+   */
+  generateGoogleCalendarWebLink(details: CalendarEventDetails): string {
+    const startIso = details.start
+      .toISOString()
+      .replace(/-|:|\.\d+/g, '');
+    const end = new Date(details.start.getTime() + details.durationMinutes * 60 * 1000);
+    const endIso = end.toISOString().replace(/-|:|\.\d+/g, '');
+
+    const params = new URLSearchParams({
+      action: 'TEMPLATE',
+      text: details.title,
+      dates: `${startIso}/${endIso}`,
+      details: `${details.description}${
+        details.meetingLink ? `\n\nGoogle Meet: ${details.meetingLink}` : ''
+      }`,
+      location: details.meetingLink || 'Google Meet',
+    });
+
+    return `https://calendar.google.com/calendar/render?${params.toString()}`;
+  }
+
+  /**
+   * Generates a universal iCalendar (.ics) invite string.
+   */
+  generateIcsInvite(details: CalendarEventDetails, uid?: string): string {
+    const startIso = details.start
+      .toISOString()
+      .replace(/-|:|\.\d+/g, '');
+    const end = new Date(details.start.getTime() + details.durationMinutes * 60 * 1000);
+    const endIso = end.toISOString().replace(/-|:|\.\d+/g, '');
+    const eventUid = uid || `interview_${Date.now()}@ats`;
+
+    return [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//ATS Platform//Interview Scheduler//EN',
+      'CALSCALE:GREGORIAN',
+      'METHOD:REQUEST',
+      'BEGIN:VEVENT',
+      `UID:${eventUid}`,
+      `DTSTAMP:${new Date().toISOString().replace(/-|:|\.\d+/g, '')}`,
+      `DTSTART:${startIso}`,
+      `DTEND:${endIso}`,
+      `SUMMARY:${details.title}`,
+      `DESCRIPTION:${details.description.replace(/\n/g, '\\n')}`,
+      `LOCATION:${details.meetingLink || 'Google Meet'}`,
+      'STATUS:CONFIRMED',
+      'END:VEVENT',
+      'END:VCALENDAR',
+    ].join('\r\n');
+  }
+}

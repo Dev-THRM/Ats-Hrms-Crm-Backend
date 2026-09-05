@@ -14,8 +14,10 @@ import { ResumeParserService } from './parser/resume-parser.service.js';
 import { AiDetectorService } from './parser/ai-detector.service.js';
 import { GeminiParserService } from './parser/gemini-parser.service.js';
 import { ResumeProcessorWorker } from './parser/resume-processor.worker.js';
-
 import { NotificationsModule } from './notifications/notifications.module.js';
+import { InterviewsController } from './interviews/interviews.controller.js';
+import { InterviewsService } from './interviews/interviews.service.js';
+import { CalendarService } from './interviews/calendar.service.js';
 
 @Module({
   imports: [SharedModule, NotificationsModule],
@@ -25,6 +27,7 @@ import { NotificationsModule } from './notifications/notifications.module.js';
     CandidatesController,
     ApplicationsController,
     ResumesController,
+    InterviewsController,
   ],
   providers: [
     JobsService,
@@ -36,6 +39,8 @@ import { NotificationsModule } from './notifications/notifications.module.js';
     AiDetectorService,
     GeminiParserService,
     ResumeProcessorWorker,
+    CalendarService,
+    InterviewsService,
   ],
   exports: [
     NotificationsModule,
@@ -47,6 +52,8 @@ import { NotificationsModule } from './notifications/notifications.module.js';
     ResumeParserService,
     AiDetectorService,
     GeminiParserService,
+    CalendarService,
+    InterviewsService,
   ],
 })
 export class AtsModule {}
