@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
-// @ts-ignore
-import pdfParse from 'pdf-parse';
+import { createRequire } from 'node:module';
+
+const require = createRequire(import.meta.url);
+const pdfParse = require('pdf-parse');
 
 export interface ParsedResumeData {
   rawText: string;
