@@ -15,8 +15,10 @@ import { AiDetectorService } from './parser/ai-detector.service.js';
 import { GeminiParserService } from './parser/gemini-parser.service.js';
 import { ResumeProcessorWorker } from './parser/resume-processor.worker.js';
 
+import { NotificationsModule } from './notifications/notifications.module.js';
+
 @Module({
-  imports: [SharedModule],
+  imports: [SharedModule, NotificationsModule],
   controllers: [
     AtsController,
     JobsController,
@@ -36,6 +38,7 @@ import { ResumeProcessorWorker } from './parser/resume-processor.worker.js';
     ResumeProcessorWorker,
   ],
   exports: [
+    NotificationsModule,
     JobsService,
     PipelineStagesService,
     CandidatesService,

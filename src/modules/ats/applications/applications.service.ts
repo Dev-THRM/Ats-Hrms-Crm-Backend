@@ -13,7 +13,10 @@ import { PrismaService } from '../../shared/prisma/prisma.service.js';
 import { CandidatesService } from '../candidates/candidates.service.js';
 import { PipelineStagesService } from '../jobs/pipeline-stages.service.js';
 import { StageTransitionService } from '../../shared/pipelines/stage-transition.service.js';
-import { RESUME_QUEUE } from '../../shared/queue/queue.module.js';
+import {
+  RESUME_QUEUE,
+  NOTIFICATION_QUEUE,
+} from '../../shared/queue/queue.module.js';
 import { CreateApplicationDto } from './dto/create-application.dto.js';
 import { QueryApplicationsDto } from './dto/query-applications.dto.js';
 
@@ -28,6 +31,9 @@ export class ApplicationsService {
     @Inject(StageTransitionService)
     private readonly stageTransitionService: StageTransitionService,
     @Optional() @InjectQueue(RESUME_QUEUE) private readonly resumeQueue?: Queue,
+    @Optional()
+    @InjectQueue(NOTIFICATION_QUEUE)
+    private readonly notificationQueue?: Queue,
   ) {}
 
   /**
@@ -176,6 +182,22 @@ export class ApplicationsService {
         applicationId: application.id,
         resumeKey,
         resumeUrl: candidateRecord?.resumeUrl,
+      });
+    }
+
+    // Enqueue candidate application receipt notification
+    if (this.notificationQueue) {
+      await this.notificationQueue.add('send-candidate-status-update', {
+        applicationId: application.id,
+        candidateId,
+        candidateName: `${application.candidate.firstName} ${application.candidate.lastName}`,
+        candidatePhone: application.candidate.phone,
+        candidateEmail: application.candidate.email,
+        jobId: dto.jobId,
+        jobTitle: application.job.title,
+        companyName: job.title ? 'Our Company' : 'Our Company',
+        stageName: initialStageName,
+        fromStageName: null,
       });
     }
 
@@ -353,6 +375,23 @@ export class ApplicationsService {
       reason: rejectionReason,
     });
 
+    // Enqueue candidate status transition notification
+    if (this.notificationQueue) {
+      await this.notificationQueue.add('send-candidate-status-update', {
+        applicationId: updated.id,
+        candidateId: updated.candidateId,
+        candidateName: `${updated.candidate.firstName} ${updated.candidate.lastName}`,
+        candidatePhone: updated.candidate.phone,
+        candidateEmail: updated.candidate.email,
+        jobId: updated.jobId,
+        jobTitle: updated.job.title,
+        companyName: 'Our Company',
+        stageName: targetStage.name,
+        fromStageName: application.currentStage.name,
+        rejectionReason,
+      });
+    }
+
     return updated;
   }
 
@@ -444,7 +483,7 @@ export class ApplicationsService {
   ) {
     await this.findOne(organizationId, applicationId);
 
-    return this.prisma.application.update({
+    const updated = await this.prisma.application.update({
       where: { id: applicationId },
       data: {
         status,
@@ -463,6 +502,23 @@ export class ApplicationsService {
         currentStage: true,
       },
     });
+
+    if (this.notificationQueue) {
+      await this.notificationQueue.add('send-candidate-status-update', {
+        applicationId: updated.id,
+        candidateId: updated.candidateId,
+        candidateName: `${updated.candidate.firstName} ${updated.candidate.lastName}`,
+        candidatePhone: updated.candidate.phone,
+        candidateEmail: updated.candidate.email,
+        jobId: updated.jobId,
+        jobTitle: updated.job.title,
+        companyName: 'Our Company',
+        stageName: status,
+        rejectionReason,
+      });
+    }
+
+    return updated;
   }
 
   /**

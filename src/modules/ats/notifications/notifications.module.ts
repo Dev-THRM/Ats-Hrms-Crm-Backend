@@ -1,0 +1,20 @@
+import { Module } from '@nestjs/common';
+import { SharedModule } from '../../shared/shared.module.js';
+import { WhatsAppTemplatesService } from './whatsapp-templates.service.js';
+import { WhatsAppService } from './whatsapp.service.js';
+import { CandidateNotificationWorker } from './candidate-notification.worker.js';
+
+@Module({
+  imports: [SharedModule],
+  providers: [
+    WhatsAppTemplatesService,
+    WhatsAppService,
+    CandidateNotificationWorker,
+  ],
+  exports: [
+    WhatsAppTemplatesService,
+    WhatsAppService,
+    CandidateNotificationWorker,
+  ],
+})
+export class NotificationsModule {}

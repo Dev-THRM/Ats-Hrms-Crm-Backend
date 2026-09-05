@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { BullModule } from '@nestjs/bullmq';
 
 export const RESUME_QUEUE = 'resume-processing';
+export const NOTIFICATION_QUEUE = 'notifications';
 
 @Module({
   imports: [
@@ -26,9 +27,14 @@ export const RESUME_QUEUE = 'resume-processing';
         };
       },
     }),
-    BullModule.registerQueue({
-      name: RESUME_QUEUE,
-    }),
+    BullModule.registerQueue(
+      {
+        name: RESUME_QUEUE,
+      },
+      {
+        name: NOTIFICATION_QUEUE,
+      },
+    ),
   ],
   exports: [BullModule],
 })
