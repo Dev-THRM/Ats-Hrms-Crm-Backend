@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ConflictException,
   Inject,
 } from '@nestjs/common';
 import { PrismaService } from '../../shared/prisma/prisma.service.js';
@@ -21,6 +22,60 @@ export class PublicCareerService {
     @Inject(CandidatesService)
     private readonly candidatesService: CandidatesService,
   ) {}
+
+  /**
+   * Checks if a candidate with given email has already applied to a specific job.
+   */
+  async checkApplied(orgSlug: string, jobId: string, email?: string) {
+    if (!email) {
+      return { alreadyApplied: false };
+    }
+
+    const org = await this.prisma.organization.findUnique({
+      where: { slug: orgSlug },
+    });
+
+    if (!org) {
+      return { alreadyApplied: false };
+    }
+
+    const candidate = await this.prisma.candidate.findUnique({
+      where: {
+        email_organizationId: {
+          email: email.toLowerCase().trim(),
+          organizationId: org.id,
+        },
+      },
+    });
+
+    if (!candidate) {
+      return { alreadyApplied: false };
+    }
+
+    const existingApp = await this.prisma.application.findUnique({
+      where: {
+        candidateId_jobId: {
+          candidateId: candidate.id,
+          jobId,
+        },
+      },
+      select: {
+        id: true,
+        appliedAt: true,
+        status: true,
+      },
+    });
+
+    if (existingApp) {
+      return {
+        alreadyApplied: true,
+        appliedAt: existingApp.appliedAt,
+        status: existingApp.status,
+      };
+    }
+
+    return { alreadyApplied: false };
+  }
 
   /**
    * Retrieves organization info and published open job postings for candidate public career page.
@@ -57,6 +112,7 @@ export class PublicCareerService {
         experienceLevel: true,
         salaryMin: true,
         salaryMax: true,
+        description: true,
         salaryCurrency: true,
         salaryVisible: true,
         createdAt: true,
@@ -135,6 +191,34 @@ export class PublicCareerService {
 
     if (!job) {
       throw new BadRequestException('Cannot apply: job is not currently open');
+    }
+
+    // Check duplicate application
+    const normalizedEmail = dto.email.toLowerCase().trim();
+    const existingCandidate = await this.prisma.candidate.findUnique({
+      where: {
+        email_organizationId: {
+          email: normalizedEmail,
+          organizationId: org.id,
+        },
+      },
+    });
+
+    if (existingCandidate) {
+      const existingApp = await this.prisma.application.findUnique({
+        where: {
+          candidateId_jobId: {
+            candidateId: existingCandidate.id,
+            jobId: job.id,
+          },
+        },
+      });
+
+      if (existingApp) {
+        throw new ConflictException(
+          'You have already submitted an application for this position. Multiple applications for the same role are not permitted.',
+        );
+      }
     }
 
     let resumeKey: string | null = null;
