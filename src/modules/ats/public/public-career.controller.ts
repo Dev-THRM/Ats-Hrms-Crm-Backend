@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Param,
+  Query,
   Body,
   UploadedFile,
   UseInterceptors,
@@ -11,6 +12,7 @@ import {
   FileTypeValidator,
   HttpCode,
   HttpStatus,
+  Inject,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { PublicCareerService } from './public-career.service.js';
@@ -18,7 +20,10 @@ import { PublicApplyJobDto } from './dto/public-apply.dto.js';
 
 @Controller('ats/public/jobs')
 export class PublicCareerController {
-  constructor(private readonly publicCareerService: PublicCareerService) {}
+  constructor(
+    @Inject(PublicCareerService)
+    private readonly publicCareerService: PublicCareerService,
+  ) {}
 
   /**
    * Public endpoint to list all open positions for an organization.
@@ -26,6 +31,18 @@ export class PublicCareerController {
   @Get(':orgSlug')
   async getPublicJobs(@Param('orgSlug') orgSlug: string) {
     return this.publicCareerService.getPublicJobs(orgSlug);
+  }
+
+  /**
+   * Public endpoint to check if candidate with email has already applied to this job.
+   */
+  @Get(':orgSlug/:jobId/check-applied')
+  async checkCandidateApplied(
+    @Param('orgSlug') orgSlug: string,
+    @Param('jobId') jobId: string,
+    @Query('email') email?: string,
+  ) {
+    return this.publicCareerService.checkApplied(orgSlug, jobId, email);
   }
 
   /**
@@ -51,7 +68,7 @@ export class PublicCareerController {
     @Body() dto: PublicApplyJobDto,
     @UploadedFile(
       new ParseFilePipe({
-        fileIsRequired: false,
+        fileIsRequired: true,
         validators: [
           new MaxFileSizeValidator({ maxSize: 10 * 1024 * 1024 }), // 10MB
           new FileTypeValidator({
@@ -60,7 +77,7 @@ export class PublicCareerController {
         ],
       }),
     )
-    file?: Express.Multer.File,
+    file: Express.Multer.File,
   ) {
     return this.publicCareerService.applyPublic(orgSlug, jobId, dto, file);
   }
