@@ -1,5 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module.js';
 
 async function bootstrap() {
@@ -23,8 +24,32 @@ async function bootstrap() {
     }),
   );
 
+  // Setup Swagger / OpenAPI Documentation
+  const swaggerConfig = new DocumentBuilder()
+    .setTitle('ATS-HRMS-CRM Platform API')
+    .setDescription(
+      'Multi-tenant enterprise ATS backend with AI resume scoring, candidate WhatsApp messaging, and interview scheduling.',
+    )
+    .setVersion('1.0')
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        name: 'JWT',
+        description: 'Enter JWT access token',
+        in: 'header',
+      },
+      'JWT-auth',
+    )
+    .build();
+
+  const document = SwaggerModule.createDocument(app, swaggerConfig);
+  SwaggerModule.setup('docs', app, document);
+
   const port = process.env.PORT ?? 3000;
   await app.listen(port);
   console.log(`Application running on http://localhost:${port}/api/v1`);
+  console.log(`Swagger documentation available at http://localhost:${port}/docs`);
 }
 await bootstrap();
