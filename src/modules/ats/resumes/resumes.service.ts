@@ -130,6 +130,26 @@ export class ResumesService {
       }
     }
 
+    // If applicationId was provided, automatically update Application.metadata
+    if (applicationId) {
+      const application = await this.prisma.application.findFirst({
+        where: { id: applicationId, organizationId },
+      });
+      if (application) {
+        const metadata = (application.metadata as Record<string, any>) || {};
+        await this.prisma.application.update({
+          where: { id: applicationId },
+          data: {
+            metadata: {
+              ...metadata,
+              resumeKey: key,
+              resumeUrl: url,
+            },
+          },
+        });
+      }
+    }
+
     // Enqueue background parsing job
     if (this.resumeQueue) {
       await this.resumeQueue.add('parse-resume', {
