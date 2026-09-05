@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   IWhatsAppDriver,
@@ -130,10 +130,10 @@ export class WhatsAppService {
   private readonly logger = new Logger(WhatsAppService.name);
   private driver: IWhatsAppDriver;
 
-  constructor(private readonly config: ConfigService) {
-    const provider = this.config.get<string>('WHATSAPP_PROVIDER', 'mock');
-    const apiToken = this.config.get<string>('WHATSAPP_API_TOKEN');
-    const phoneNumberId = this.config.get<string>('WHATSAPP_PHONE_NUMBER_ID');
+  constructor(@Inject(ConfigService) private readonly config: ConfigService) {
+    const provider = this.config?.get<string>('WHATSAPP_PROVIDER', 'mock') || 'mock';
+    const apiToken = this.config?.get<string>('WHATSAPP_API_TOKEN');
+    const phoneNumberId = this.config?.get<string>('WHATSAPP_PHONE_NUMBER_ID');
 
     if (provider === 'meta' && apiToken && phoneNumberId) {
       this.logger.log('Initializing Meta Cloud API WhatsApp driver');
