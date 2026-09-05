@@ -72,6 +72,23 @@ export class CandidatesService {
           organizationId,
         },
       });
+    } else {
+      candidate = await client.candidate.update({
+        where: { id: candidate.id },
+        data: {
+          firstName: dto.firstName || candidate.firstName,
+          lastName: dto.lastName !== undefined ? dto.lastName : candidate.lastName,
+          ...(dto.phone ? { phone: dto.phone } : {}),
+          ...(dto.currentCompany ? { currentCompany: dto.currentCompany } : {}),
+          ...(dto.currentTitle ? { currentTitle: dto.currentTitle } : {}),
+          ...(dto.location ? { location: dto.location } : {}),
+          ...(dto.linkedinUrl ? { linkedinUrl: dto.linkedinUrl } : {}),
+          ...(dto.portfolioUrl ? { portfolioUrl: dto.portfolioUrl } : {}),
+          ...(dto.githubUrl ? { githubUrl: dto.githubUrl } : {}),
+          ...(dto.resumeUrl ? { resumeUrl: dto.resumeUrl } : {}),
+          ...(dto.skills && dto.skills.length > 0 ? { skills: dto.skills } : {}),
+        },
+      });
     }
 
     return candidate;
@@ -109,14 +126,16 @@ export class CandidatesService {
       }),
     };
 
-    const skip = (page - 1) * limit;
+    const pageNum = Math.max(1, Number(page) || 1);
+    const limitNum = Math.max(1, Number(limit) || 10);
+    const skip = (pageNum - 1) * limitNum;
 
     const [total, candidates] = await Promise.all([
       this.prisma.candidate.count({ where }),
       this.prisma.candidate.findMany({
         where,
         skip,
-        take: limit,
+        take: limitNum,
         orderBy: { [sortBy]: sortOrder },
         include: {
           _count: {
@@ -132,9 +151,9 @@ export class CandidatesService {
       data: candidates,
       meta: {
         total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit) || 1,
+        page: pageNum,
+        limit: limitNum,
+        totalPages: Math.ceil(total / limitNum) || 1,
       },
     };
   }
