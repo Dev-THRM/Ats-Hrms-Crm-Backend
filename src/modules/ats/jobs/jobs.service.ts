@@ -110,14 +110,16 @@ export class JobsService {
       }),
     };
 
-    const skip = (page - 1) * limit;
+    const pageNum = Math.max(1, Number(page) || 1);
+    const limitNum = Math.max(1, Number(limit) || 10);
+    const skip = (pageNum - 1) * limitNum;
 
     const [total, jobs] = await Promise.all([
       this.prisma.job.count({ where }),
       this.prisma.job.findMany({
         where,
         skip,
-        take: limit,
+        take: limitNum,
         orderBy: { [sortBy]: sortOrder },
         include: {
           createdBy: {
@@ -131,6 +133,7 @@ export class JobsService {
           _count: {
             select: {
               pipelineStages: true,
+              applications: true,
             },
           },
         },
@@ -141,9 +144,9 @@ export class JobsService {
       data: jobs,
       meta: {
         total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit) || 1,
+        page: pageNum,
+        limit: limitNum,
+        totalPages: Math.ceil(total / limitNum) || 1,
       },
     };
   }
@@ -167,6 +170,12 @@ export class JobsService {
             firstName: true,
             lastName: true,
             email: true,
+          },
+        },
+        _count: {
+          select: {
+            pipelineStages: true,
+            applications: true,
           },
         },
       },
