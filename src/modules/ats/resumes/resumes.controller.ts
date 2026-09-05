@@ -69,11 +69,18 @@ export class ResumesController {
     @UploadedFile() file: UploadedResumeFile,
     @Body('candidateId') candidateId?: string,
     @Body('jobId') jobId?: string,
+    @Body('applicationId') applicationId?: string,
   ) {
     if (!file) {
       throw new BadRequestException('No file uploaded');
     }
-    return this.resumesService.uploadDirect(orgId, file, candidateId, jobId);
+    return this.resumesService.uploadDirect(
+      orgId,
+      file,
+      candidateId,
+      jobId,
+      applicationId,
+    );
   }
 
   @Get('download-url')
