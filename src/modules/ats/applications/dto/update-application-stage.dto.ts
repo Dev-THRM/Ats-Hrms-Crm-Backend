@@ -1,9 +1,15 @@
 import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { Transform } from 'class-transformer';
 
 export class UpdateApplicationStageDto {
   @IsString()
-  @IsNotEmpty()
-  stageId: string;
+  @IsOptional()
+  @Transform(({ obj, value }) => value || obj.toStageId)
+  stageId?: string;
+
+  @IsString()
+  @IsOptional()
+  toStageId?: string;
 
   @IsString()
   @IsOptional()
